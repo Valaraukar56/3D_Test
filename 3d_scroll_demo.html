@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saturn · Explore the Cosmos</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold: #C9A84C;
+      --gold-dim: rgba(201,168,76,0.75);
+      --white: #ffffff;
+      --dim: rgba(255,255,255,0.45);
+      --bg: #000002;
+    }
+
+    body {
+      background: var(--bg);
+      overflow-x: hidden;
+      font-family: 'Space Grotesk', sans-serif;
+      color: var(--white);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       HERO SECTION
+       ══════════════════════════════════════════════════════════════════════ */
+    #hero {
+      position: relative;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: var(--bg);
+      overflow: hidden;
+      z-index: 2;
+    }
+
+    /* Gradient fade-out at bottom → blends into the Three.js canvas */
+    #hero::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 30%;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+    }
+
+    /* CSS star dots */
+    #hero-stars {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .star {
+      position: absolute;
+      background: #fff;
+      border-radius: 50%;
+      animation: star-twinkle linear infinite;
+    }
+
+    @keyframes star-twinkle {
+      0%, 100% { opacity: var(--op, 0.6); transform: scale(1); }
+      50%       { opacity: 0.1;           transform: scale(0.7); }
+    }
+
+    /* Hero content */
+    #hero-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 0 24px;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(10px, 1.2vw, 13px);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 24px;
+    }
+
+    #hero h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(42px, 9vw, 130px);
+      font-weight: 900;
+      line-height: 0.95;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      text-shadow: 0 0 80px rgba(201,168,76,0.2);
+    }
+
+    .hero-divider {
+      width: 60px;
+      height: 1px;
+      background: var(--gold-dim);
+      margin: 28px 0;
+    }
+
+    .hero-sub {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(14px, 2vw, 20px);
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      color: var(--dim);
+      max-width: 480px;
+    }
+
+    /* Scroll arrow */
+    #scroll-arrow {
+      position: absolute;
+      bottom: 42px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--dim);
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      animation: arrow-float 2s ease-in-out infinite;
+      z-index: 1;
+    }
+
+    #scroll-arrow svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--gold-dim);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    @keyframes arrow-float {
+      0%, 100% { transform: translateX(-50%) translateY(0);    opacity: 0.5; }
+      50%       { transform: translateX(-50%) translateY(8px); opacity: 1;   }
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       THREE.JS CANVAS (fixed, behind everything)
+       ══════════════════════════════════════════════════════════════════════ */
+    #planet-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* 400vh scroll space — drives GSAP */
+    #scroll-spacer {
+      height: 400vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       FRAME ANIMATION SECTION
+       ══════════════════════════════════════════════════════════════════════ */
+    #frame-section {
+      position: relative;
+      height: 500vh;
+      background: var(--bg);
+      z-index: 1;
+    }
+
+    #frame-sticky {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #frame-canvas {
+      display: block;
+      width: 100vw;
+      height: 56.25vw;
+      max-height: 100vh;
+      max-width: 177.78vh;
+      object-fit: contain;
+    }
+
+    /* Loading overlay */
+    #frame-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      background: var(--bg);
+      z-index: 20;
+      transition: opacity 0.7s ease;
+    }
+
+    #frame-loader.hidden { opacity: 0; pointer-events: none; }
+
+    #loader-bar-wrap {
+      width: 200px; height: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    #loader-bar {
+      height: 100%; width: 0%;
+      background: var(--gold);
+      border-radius: 2px;
+      transition: width 0.15s linear;
+    }
+
+    #loader-text {
+      font-size: 10px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--dim);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* ── Frame overlays (shared base) ──────────────────────────────────── */
+    .frame-overlay {
+      position: absolute;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    /* Planet title — center */
+    #overlay-title {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      pointer-events: none;
+    }
+
+    #overlay-title h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(40px, 7vw, 110px);
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    #overlay-title p {
+      margin-top: 12px;
+      font-size: clamp(11px, 1.5vw, 18px);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* Subtitle — top right */
+    #overlay-subtitle {
+      top: 10%;
+      right: 6%;
+      text-align: right;
+    }
+
+    #overlay-subtitle h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(18px, 3vw, 44px);
+      font-weight: 400;
+      line-height: 1.3;
+      color: var(--white);
+      letter-spacing: -0.01em;
+    }
+
+    /* Stat overlays — bottom left, animated via JS */
+    .stat-overlay {
+      bottom: 10%;
+      left: 6%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: opacity 0s, transform 0s; /* driven by JS each frame — no CSS transition */
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 4.5vw, 66px);
+      font-weight: 700;
+      line-height: 1;
+      color: var(--gold);
+      letter-spacing: -0.01em;
+    }
+
+    .stat-label {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: clamp(10px, 1.1vw, 13px);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+
+    /* CTA — centered bottom */
+    #overlay-cta {
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: auto;
+    }
+
+    #overlay-cta button {
+      padding: 14px 44px;
+      border: 1px solid rgba(201,168,76,0.6);
+      background: transparent;
+      color: var(--gold);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 1px;
+      transition: background 0.3s, border-color 0.3s, color 0.3s;
+    }
+
+    #overlay-cta button:hover {
+      background: var(--gold);
+      color: #000;
+      border-color: var(--gold);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════
+       FINAL SECTION
+       ══════════════════════════════════════════════════════════════════════ */
+    #final-section {
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(to bottom, var(--bg) 0%, #050b1a 60%, #07122a 100%);
+      padding: 120px 24px 140px;
+    }
+
+    .final-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .final-eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .final-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(28px, 5vw, 60px);
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 72px;
+      letter-spacing: -0.02em;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .cards-grid { grid-template-columns: 1fr; }
+      .final-title { margin-bottom: 48px; }
+    }
+
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 40px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+
+      /* Appear animation — driven by IntersectionObserver */
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1),
+                  transform 0.7s cubic-bezier(0.22,1,0.36,1),
+                  background 0.3s, border-color 0.3s;
+    }
+
+    .card.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .card:hover {
+      background: rgba(201,168,76,0.05);
+      border-color: rgba(201,168,76,0.25);
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold);
+    }
+
+    .card-icon svg {
+      width: 40px;
+      height: 40px;
+      stroke: var(--gold);
+      fill: none;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .card h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(16px, 2vw, 20px);
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.02em;
+    }
+
+    .card p {
+      font-size: 14px;
+      line-height: 1.7;
+      color: rgba(255,255,255,0.5);
+      font-weight: 300;
+    }
+
+    .card-tag {
+      margin-top: auto;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold-dim);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    /* ── Responsive mobile misc ─────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      #overlay-subtitle { top: 6%; right: 4%; }
+      .stat-overlay { bottom: 8%; left: 4%; }
+      #overlay-cta { bottom: 8%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     1. HERO SECTION
+     ════════════════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div id="hero-stars"></div>
+
+  <div id="hero-content">
+    <p class="hero-eyebrow">Deep Space Exploration</p>
+    <h1>EXPLORE<br>THE COSMOS</h1>
+    <div class="hero-divider"></div>
+    <p class="hero-sub">A journey through the rings of Saturn</p>
+  </div>
+
+  <div id="scroll-arrow">
+    <svg viewBox="0 0 24 24">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     2. THREE.JS SATURN (fixed canvas + scroll spacer)
+     ════════════════════════════════════════════════════════════════════════ -->
+<canvas id="planet-canvas"></canvas>
+<div id="scroll-spacer"></div>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     3. FRAME ANIMATION SECTION
+     ════════════════════════════════════════════════════════════════════════ -->
+<section id="frame-section">
+  <div id="frame-loader">
+    <div id="loader-bar-wrap"><div id="loader-bar"></div></div>
+    <div id="loader-text">Loading</div>
+  </div>
+
+  <div id="frame-sticky">
+    <canvas id="frame-canvas" width="1920" height="1080"></canvas>
+
+    <!-- Planet name — center — frames 0-50 -->
+    <div class="frame-overlay" id="overlay-title">
+      <h1>Saturn</h1>
+      <p>The Ringed Giant</p>
+    </div>
+
+    <!-- Distance stat — top right — frames 55-100 -->
+    <div class="frame-overlay" id="overlay-subtitle">
+      <h2>1.2 billion km<br>from the Sun</h2>
+    </div>
+
+    <!-- Stat cards — bottom left — sequential -->
+    <div class="frame-overlay stat-overlay" id="stat-diameter">
+      <div class="stat-value">94,000 km</div>
+      <div class="stat-label">Diameter</div>
+    </div>
+
+    <div class="frame-overlay stat-overlay" id="stat-moons">
+      <div class="stat-value">62 moons</div>
+      <div class="stat-label">Natural satellites</div>
+    </div>
+
+    <div class="frame-overlay stat-overlay" id="stat-temp">
+      <div class="stat-value">-178°C</div>
+      <div class="stat-label">Average temperature</div>
+    </div>
+
+    <div class="frame-overlay stat-overlay" id="stat-orbit">
+      <div class="stat-value">29 years</div>
+      <div class="stat-label">Orbital period</div>
+    </div>
+
+    <!-- CTA — center bottom — frames 120-149 -->
+    <div class="frame-overlay" id="overlay-cta">
+      <button>Explore</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     4. FINAL INFO SECTION
+     ════════════════════════════════════════════════════════════════════════ -->
+<section id="final-section">
+  <div class="final-inner">
+    <p class="final-eyebrow">About Saturn</p>
+    <h2 class="final-title">Discover the Giant</h2>
+
+    <div class="cards-grid">
+
+      <div class="card">
+        <div class="card-icon">
+          <!-- Rings icon: nested ellipses -->
+          <svg viewBox="0 0 40 40">
+            <ellipse cx="20" cy="20" rx="8" ry="8"/>
+            <ellipse cx="20" cy="20" rx="18" ry="7" transform="rotate(-20,20,20)"/>
+            <ellipse cx="20" cy="20" rx="14" ry="5" transform="rotate(-20,20,20)"/>
+          </svg>
+        </div>
+        <h3>The Rings</h3>
+        <p>Composés de milliards de fragments de glace et de roche, les anneaux s'étendent sur 282,000 km mais ne font que quelques centaines de mètres d'épaisseur.</p>
+        <span class="card-tag">Système d'anneaux</span>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <!-- Moons icon: crescent + small circle -->
+          <svg viewBox="0 0 40 40">
+            <path d="M22 10 a12 12 0 1 0 0 20 a9 9 0 1 1 0-20z"/>
+            <circle cx="31" cy="12" r="3"/>
+          </svg>
+        </div>
+        <h3>The Moons</h3>
+        <p>Saturne possède 146 lunes confirmées. Titan, la plus grande, est dotée d'une atmosphère dense. Encelade cache un océan liquide sous sa surface gelée.</p>
+        <span class="card-tag">146 lunes confirmées</span>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">
+          <!-- Storm icon: spiral -->
+          <svg viewBox="0 0 40 40">
+            <path d="M20 20 m0-12 a12 12 0 0 1 8 20 a9 9 0 0 1-14-6 a6 6 0 0 1 10-3 a3 3 0 0 1-4 4"/>
+            <circle cx="20" cy="20" r="2" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <h3>The Storms</h3>
+        <p>Des tempêtes hexagonales aux pôles et des vents soufflant à plus de 1,800 km/h. La Grande Tempête Blanche se forme tous les 30 ans et est visible depuis la Terre.</p>
+        <span class="card-tag">Vents à 1,800 km/h</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Three.js r128 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<!-- GSAP 3 + ScrollTrigger -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     HERO STARS (generated in JS for random placement)
+     ════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  const container = document.getElementById('hero-stars');
+  const count = 120;
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const size = Math.random() * 2 + 0.5;
+    const op   = (Math.random() * 0.6 + 0.2).toFixed(2);
+    const dur  = (Math.random() * 4 + 2).toFixed(1);
+    const del  = (Math.random() * 4).toFixed(1);
+    s.style.cssText =
+      'left:'   + (Math.random() * 100).toFixed(2) + '%;' +
+      'top:'    + (Math.random() * 100).toFixed(2) + '%;' +
+      'width:'  + size.toFixed(1) + 'px;' +
+      'height:' + size.toFixed(1) + 'px;' +
+      '--op:'   + op + ';' +
+      'animation-duration:' + dur + 's;' +
+      'animation-delay:-'   + del + 's;';
+    container.appendChild(s);
+  }
+}());
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     THREE.JS SATURN HERO
+     ════════════════════════════════════════════════════════════════════════ -->
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+const canvas   = document.getElementById('planet-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding      = THREE.sRGBEncoding;
+renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000002);
+
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 0.6, 5.5);
+camera.lookAt(0, -0.1, 0);
+
+// Starfield
+let starField;
+(function () {
+  const count = 3000;
+  const pos   = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 220;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starField = new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.10, sizeAttenuation: true, transparent: true, opacity: 0.9,
+  }));
+  scene.add(starField);
+}());
+
+// Lighting
+scene.add(new THREE.AmbientLight(0x1a1408, 1.2));
+const keyLight = new THREE.DirectionalLight(0xffe8c0, 3.8);
+keyLight.position.set(4, 3, 5);
+scene.add(keyLight);
+const backLight = new THREE.DirectionalLight(0xffd090, 2.5);
+backLight.position.set(3, 1, -7);
+scene.add(backLight);
+const rimBlue = new THREE.DirectionalLight(0x6090ff, 0.8);
+rimBlue.position.set(-5, 0, -2);
+scene.add(rimBlue);
+const fillLeft = new THREE.DirectionalLight(0xff9050, 0.5);
+fillLeft.position.set(-3, 1, 4);
+scene.add(fillLeft);
+
+// GSAP proxy state
+const state = { scale: 0, opacity: 0, rotY: 0, posX: 0 };
+
+// GLB
+let planetGroup        = null;
+const managedMaterials = [];
+let idleRotY           = 0;
+
+const gltfLoader = new THREE.GLTFLoader();
+gltfLoader.load('./planet_saturn.glb', (gltf) => {
+  planetGroup = gltf.scene;
+  scene.add(planetGroup);
+  planetGroup.traverse((child) => {
+    if (!child.isMesh) return;
+    const mats     = Array.isArray(child.material) ? child.material : [child.material];
+    const allOpaque = mats.every(m => m.opacity >= 0.99);
+    const isAtmo    = mats.length === 1 && mats[0].opacity < 0.99 && mats[0].opacity > 0.05;
+    child.renderOrder = allOpaque ? 0 : isAtmo ? 1 : 2;
+    mats.forEach((m) => {
+      m.side       = THREE.DoubleSide;
+      m.transparent = true;
+      m.depthWrite  = allOpaque;
+      managedMaterials.push({ mat: m, baseOpacity: m.opacity, isPlanet: allOpaque });
+    });
+  });
+}, undefined, (err) => console.warn('[GLB]', err));
+
+// GSAP scroll — triggers only within #scroll-spacer (after the hero)
+const tl = gsap.timeline({
+  scrollTrigger: {
+    trigger: '#scroll-spacer',
+    start:   'top top',
+    end:     'bottom bottom',
+    scrub:   1.8,
+  },
+});
+tl.to(state, { scale: 1, opacity: 1, duration: 1.5, ease: 'power2.out' }, 0);
+tl.to(state, { rotY: Math.PI * 2.5, duration: 10, ease: 'none' }, 0);
+tl.to(state, { posX: 1.4, duration: 4.5, ease: 'power2.inOut' }, 1.5);
+tl.to(state, { scale: 0.15, duration: 3, ease: 'power2.in' }, 6);
+tl.to(state, { opacity: 0, duration: 2.5, ease: 'power2.in' }, 7.5);
+
+function onResize() {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+function tick() {
+  requestAnimationFrame(tick);
+  idleRotY += 0.0015;
+  if (planetGroup) {
+    planetGroup.rotation.y = idleRotY + state.rotY;
+    planetGroup.scale.setScalar(state.scale);
+    planetGroup.position.x = state.posX;
+    managedMaterials.forEach(({ mat, baseOpacity, isPlanet }) => {
+      const cur = baseOpacity * state.opacity;
+      mat.opacity = cur;
+      if (isPlanet) mat.depthWrite = cur > 0.05;
+    });
+  }
+  starField.rotation.y += 0.00003;
+  starField.rotation.x += 0.00001;
+  renderer.render(scene, camera);
+}
+tick();
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     FRAME-SEQUENCE SCROLL ANIMATION
+     ════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  const TOTAL = 150;
+  const BASE  = './frames/planet/frame_';
+
+  const loaderEl  = document.getElementById('frame-loader');
+  const loaderBar = document.getElementById('loader-bar');
+  const loaderTxt = document.getElementById('loader-text');
+  const fc  = document.getElementById('frame-canvas');
+  const ctx = fc.getContext('2d');
+
+  const elTitle    = document.getElementById('overlay-title');
+  const elSubtitle = document.getElementById('overlay-subtitle');
+  const elCta      = document.getElementById('overlay-cta');
+  const elDiameter = document.getElementById('stat-diameter');
+  const elMoons    = document.getElementById('stat-moons');
+  const elTemp     = document.getElementById('stat-temp');
+  const elOrbit    = document.getElementById('stat-orbit');
+
+  function pad(n) { return String(n).padStart(4, '0'); }
+  function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+  // Fade in/out within [a, b], with fadeLen-frame ramps
+  function winOp(fi, a, b, fl) {
+    if (fi < a || fi > b) return 0;
+    return Math.min(clamp01((fi - a) / fl), clamp01((b - fi) / fl));
+  }
+
+  // Stat: slide from bottom on entry, fade out on exit
+  function applyStat(el, fi, a, b, fl) {
+    if (fi < a || fi > b) {
+      el.style.opacity   = '0';
+      el.style.transform = 'translateY(20px)';
+      return;
+    }
+    const fadeIn  = clamp01((fi - a) / fl);
+    const fadeOut = clamp01((b - fi) / fl);
+    el.style.opacity   = Math.min(fadeIn, fadeOut);
+    el.style.transform = 'translateY(' + ((1 - fadeIn) * 20) + 'px)';
+  }
+
+  // Preloader
+  const frames = new Array(TOTAL);
+  let loaded = 0;
+  let ready  = false;
+
+  function onLoad() {
+    loaded++;
+    const pct = (loaded / TOTAL) * 100;
+    loaderBar.style.width    = pct + '%';
+    loaderTxt.textContent    = 'Loading ' + loaded + ' / ' + TOTAL;
+    if (loaded === TOTAL) {
+      ready = true;
+      loaderEl.classList.add('hidden');
+      ctx.drawImage(frames[0], 0, 0, 1920, 1080);
+      initScroll();
+    }
+  }
+
+  for (let i = 0; i < TOTAL; i++) {
+    const img = new Image();
+    img.src    = BASE + pad(i) + '.png';
+    img.onload  = onLoad;
+    img.onerror = onLoad;
+    frames[i]  = img;
+  }
+
+  // Scroll scrubbing
+  let curFi     = -1;
+  let rafPending = false;
+
+  function initScroll() {
+    document.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  function onScroll() {
+    if (!rafPending) { rafPending = true; requestAnimationFrame(update); }
+  }
+
+  function update() {
+    rafPending = false;
+
+    const section    = document.getElementById('frame-section');
+    const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+    const scrolled   = window.scrollY - sectionTop;
+    const sectionH   = section.offsetHeight - window.innerHeight;
+    const progress   = clamp01(scrolled / sectionH);
+    const fi         = Math.round(progress * (TOTAL - 1));
+
+    // Draw frame
+    if (fi !== curFi && frames[fi] && frames[fi].complete) {
+      ctx.drawImage(frames[fi], 0, 0, 1920, 1080);
+      curFi = fi;
+    }
+
+    // Overlays
+    elTitle.style.opacity    = winOp(fi, 0, 50, 8);
+
+    elSubtitle.style.opacity = winOp(fi, 55, 100, 8);
+
+    applyStat(elDiameter, fi,   0,  30, 6);
+    applyStat(elMoons,    fi,  30,  60, 6);
+    applyStat(elTemp,     fi,  60,  90, 6);
+    applyStat(elOrbit,    fi,  90, 120, 6);
+
+    elCta.style.opacity      = winOp(fi, 120, 149, 8);
+  }
+}());
+</script>
+
+<!-- ════════════════════════════════════════════════════════════════════════
+     CARDS APPEAR ON SCROLL
+     ════════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+  const cards = document.querySelectorAll('.card');
+  if (!('IntersectionObserver' in window)) {
+    cards.forEach(c => c.classList.add('visible'));
+    return;
+  }
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        const idx = Array.from(cards).indexOf(entry.target);
+        setTimeout(() => entry.target.classList.add('visible'), idx * 120);
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15 });
+  cards.forEach(c => io.observe(c));
+}());
+</script>
+
+</body>
+</html>
