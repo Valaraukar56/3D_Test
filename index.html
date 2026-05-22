@@ -192,11 +192,13 @@
 
     #frame-canvas {
       display: block;
-      width: 100vw;
-      height: 56.25vw;
-      max-height: 100vh;
-      max-width: 177.78vh;
-      object-fit: contain;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      /* cover: toujours >= 100vw ET >= 100vh, ratio 16:9 préservé */
+      width: max(100vw, 177.78vh);
+      height: max(56.25vw, 100vh);
     }
 
     /* Loading overlay */
@@ -753,18 +755,23 @@ tick();
 </script>
 
 <!-- ════════════════════════════════════════════════════════════════════════
-     FRAME-SEQUENCE SCROLL ANIMATION
+     FRAME-SEQUENCE SCROLL ANIMATION (JPG extracted from video)
      ════════════════════════════════════════════════════════════════════════ -->
 <script>
 (function () {
-  const TOTAL = 150;
-  const BASE  = './frames/planet/frame_';
+  const TOTAL = 240;                          // 30fps × 8s
+  const BASE  = './assets/frames/frame_';    // FFmpeg outputs frame_0001.jpg … frame_0240.jpg
 
   const loaderEl  = document.getElementById('frame-loader');
   const loaderBar = document.getElementById('loader-bar');
   const loaderTxt = document.getElementById('loader-text');
   const fc  = document.getElementById('frame-canvas');
   const ctx = fc.getContext('2d');
+
+  // Quality settings — set once
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  fc.style.willChange = 'transform';
 
   const elTitle    = document.getElementById('overlay-title');
   const elSubtitle = document.getElementById('overlay-subtitle');
@@ -774,16 +781,15 @@ tick();
   const elTemp     = document.getElementById('stat-temp');
   const elOrbit    = document.getElementById('stat-orbit');
 
+  // FFmpeg numbers from 1 → pad(i+1)
   function pad(n) { return String(n).padStart(4, '0'); }
   function clamp01(v) { return Math.max(0, Math.min(1, v)); }
 
-  // Fade in/out within [a, b], with fadeLen-frame ramps
   function winOp(fi, a, b, fl) {
     if (fi < a || fi > b) return 0;
     return Math.min(clamp01((fi - a) / fl), clamp01((b - fi) / fl));
   }
 
-  // Stat: slide from bottom on entry, fade out on exit
   function applyStat(el, fi, a, b, fl) {
     if (fi < a || fi > b) {
       el.style.opacity   = '0';
@@ -796,18 +802,16 @@ tick();
     el.style.transform = 'translateY(' + ((1 - fadeIn) * 20) + 'px)';
   }
 
-  // Preloader
+  // Preload all frames
   const frames = new Array(TOTAL);
   let loaded = 0;
-  let ready  = false;
 
   function onLoad() {
     loaded++;
     const pct = (loaded / TOTAL) * 100;
-    loaderBar.style.width    = pct + '%';
-    loaderTxt.textContent    = 'Loading ' + loaded + ' / ' + TOTAL;
+    loaderBar.style.width = pct + '%';
+    loaderTxt.textContent = 'Loading ' + loaded + ' / ' + TOTAL;
     if (loaded === TOTAL) {
-      ready = true;
       loaderEl.classList.add('hidden');
       ctx.drawImage(frames[0], 0, 0, 1920, 1080);
       initScroll();
@@ -815,8 +819,8 @@ tick();
   }
 
   for (let i = 0; i < TOTAL; i++) {
-    const img = new Image();
-    img.src    = BASE + pad(i) + '.png';
+    const img  = new Image();
+    img.src    = BASE + pad(i + 1) + '.jpg';
     img.onload  = onLoad;
     img.onerror = onLoad;
     frames[i]  = img;
@@ -843,25 +847,25 @@ tick();
     const scrolled   = window.scrollY - sectionTop;
     const sectionH   = section.offsetHeight - window.innerHeight;
     const progress   = clamp01(scrolled / sectionH);
-    const fi         = Math.round(progress * (TOTAL - 1));
 
-    // Draw frame
+    // Frame index 0-239
+    const fi = Math.round(progress * (TOTAL - 1));
     if (fi !== curFi && frames[fi] && frames[fi].complete) {
       ctx.drawImage(frames[fi], 0, 0, 1920, 1080);
       curFi = fi;
     }
 
-    // Overlays
-    elTitle.style.opacity    = winOp(fi, 0, 50, 8);
+    // Overlay timing: virtual 0-149 scale so ratios are identical to before
+    const oi = Math.round(progress * 149);
+    elTitle.style.opacity    = winOp(oi,   0,  50, 8);
+    elSubtitle.style.opacity = winOp(oi,  55, 100, 8);
 
-    elSubtitle.style.opacity = winOp(fi, 55, 100, 8);
+    applyStat(elDiameter, oi,   0,  30, 6);
+    applyStat(elMoons,    oi,  30,  60, 6);
+    applyStat(elTemp,     oi,  60,  90, 6);
+    applyStat(elOrbit,    oi,  90, 120, 6);
 
-    applyStat(elDiameter, fi,   0,  30, 6);
-    applyStat(elMoons,    fi,  30,  60, 6);
-    applyStat(elTemp,     fi,  60,  90, 6);
-    applyStat(elOrbit,    fi,  90, 120, 6);
-
-    elCta.style.opacity      = winOp(fi, 120, 149, 8);
+    elCta.style.opacity = winOp(oi, 120, 149, 8);
   }
 }());
 </script>
